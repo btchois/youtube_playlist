@@ -17,6 +17,9 @@ Youtube Data API를 사용하기 때문에 apikey를 발급받아야 합니다.<
 | v1.0.0  | 2020.11.19  | First version  |
 | v1.0.1  | 2021.03.09  | manifest.json add version attribute.  |
 | v1.1.1  | 2022.07.24  | Fixed bug  |
+| v1.1.2  | 2022.08.01  | forked from miumida  |
+| v1.1.3  | 2022.08.01  | renamed sensor.utube_xxx to sensor.youtube_xxxx  |
+
 
 <br>
 
