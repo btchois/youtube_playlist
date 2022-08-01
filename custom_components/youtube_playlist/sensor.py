@@ -7,14 +7,21 @@ from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import Entity
 import requests
 import json
+import isodate
 
-from .const import DOMAIN, ICON, CONF_APIKEY, CONF_PLAYLISTS, CONF_PLAYLIST_ID, CONF_PLAYLIST_NAME, BASE_URL, WATCH_URL, ATTR_SNIPPET, ATTR_TIT, ATTR_URL
+# to do list
+# music/video 구분
+# channel 지원
+# debug : Youtube Playlist를 그대로 내 repository에 fork후에 HACS에서 download해보기
+
+from random import randint
+from .const import DOMAIN, ICON, CONF_APIKEY, CONF_PLAYLISTS, CONF_PLAYLIST_ID, CONF_PLAYLIST_NAME, BASE_URL, BASE_URL2, BASE_URL3, VIDEO_URL, MUSIC_URL, ATTR_SNIPPET, ATTR_TIT, ATTR_URL
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_APIKEY): cv.string,
     vol.Required(CONF_PLAYLISTS): vol.All(cv.ensure_list, [{
         vol.Required(CONF_PLAYLIST_ID): cv.string,
-        vol.Optional(CONF_PLAYLIST_NAME): cv.string,
+        vol.Required(CONF_PLAYLIST_NAME): cv.string,    # btchois: Optional->Required
     }]),
 })
 
@@ -32,9 +39,8 @@ async def async_setup_platform(
     session = async_create_clientsession(hass)
 
     for plist in playlists:
-        pName = plist[CONF_PLAYLIST_NAME] if CONF_PLAYLIST_NAME in plist else None
+        sensor = YoutubeSensor(apikey, plist[CONF_PLAYLIST_ID], plist[CONF_PLAYLIST_NAME], session)
 
-        sensor = YoutubeSensor(apikey, plist[CONF_PLAYLIST_ID], pName, session)
         await sensor.async_update()
 
         sensors += [ sensor ]
@@ -44,92 +50,128 @@ async def async_setup_platform(
 class YoutubeSensor(Entity):
     """YouTube Sensor class"""
     def __init__(self, apikey, playlist_id, playlist_name, session):
-        self._state         = None
         self._session       = session
         self._image         = None
         self._apikey        = apikey
-        self._name          = playlist_id.lower().replace("-", "_")
+        self._name          = playlist_name 
         self._playlist_id   = playlist_id
         self._playlist_name = playlist_name
-        self._url           = None
+        self._video_url     = None
+        self._music_url     = None
+
         self._init          = False
+        # btchois
+        self._video_num   = 0
+        self._play_id     = 0
+        self._video_duration = None
+        self._video_miniutes = 0
 
         _LOGGER.error(self._name)
 
-        self.data = {}
+        #self.data = {}
         self.playlist = []
 
     async def async_update(self):
         """Update sensor."""
         _LOGGER.debug('%s - Running update', self._name)
 
-        dict = {}
+        # btchois
+        res_json = { "nextPageToken": "Initial" }
+        token = ''
+        first = True
+
+        #dict = {}
         try:
 
             if not self._init:
-                url = BASE_URL.format(self._playlist_id, self._apikey)
-                res = await self._session.get(url)
+                while ('nextPageToken' in res_json):
+                    if first:
+                        url = BASE_URL.format(self._playlist_id, self._apikey)
+                        first = False
+                    else:
+                        url = BASE_URL2.format(self._playlist_id, self._apikey, token) 
 
-                res_json = await res.json()
+                    res = await self._session.get(url)
+                    res_json = await res.json()
+                    res_items = res_json['items']
+                    #_LOGGER.error(res_items)
 
-                songs = res_json['items']
+                    self._video_number = res_json['pageInfo']['totalResults']
+                    if 'nextPageToken' in res_json:
+                        token = res_json['nextPageToken']
 
-                _LOGGER.error(songs)
+                    init = False
 
-                init = False
+                    for res_item in res_items:
 
-                for song in songs:
+                        title = res_item[ATTR_SNIPPET][ATTR_TIT]
+                        if title == 'Private video':
+                            continue
 
-                    title = song[ATTR_SNIPPET][ATTR_TIT]
+                        id    = res_item[ATTR_SNIPPET]['resourceId']['videoId']
+                        kind  = res_item[ATTR_SNIPPET]['resourceId']['kind']
+                        #url   = VIDEO_URL.format(id)
+                        thumbnail_url    = res_item[ATTR_SNIPPET]['thumbnails']['default'][ATTR_URL]
+                        thumbnail_medium = res_item[ATTR_SNIPPET]['thumbnails']['medium'][ATTR_URL]
+                        thumbnail_high   = res_item[ATTR_SNIPPET]['thumbnails']['high'][ATTR_URL]
 
-                    if title == 'Private video':
-                        continue
+                        thumbnail_url = thumbnail_medium
 
-                    id    = song[ATTR_SNIPPET]['resourceId']['videoId']
-                    kind  = song[ATTR_SNIPPET]['resourceId']['kind']
-                    url   = WATCH_URL.format(song['snippet']['resourceId']['videoId'])
-                    thumbnail_url    = song[ATTR_SNIPPET]['thumbnails']['default'][ATTR_URL]
-                    thumbnail_medium = song[ATTR_SNIPPET]['thumbnails']['medium'][ATTR_URL]
-                    thumbnail_high   = song[ATTR_SNIPPET]['thumbnails']['high'][ATTR_URL]
+                        #dict[id] = {
+                        #    'video_id': id,
+                        #    'title':    title,
+                        #    'url':      url,
+                        #    'thumbnail_url': thumbnail_url,
+                        #    'kind' : kind,
+                        #}
 
-                    thumbnail_url = thumbnail_medium
+                        temp = {
+                            'video_id': id,
+                            'title':    title,
+                        #    'url':      url,
+                            'thumbnail_url': thumbnail_url,
+                            'kind' : kind,
+                        }
 
-                    dict[id] = {
-                        'video_id': id,
-                        'title':    title,
-                        'url':      url,
-                        'thumbnail_url': thumbnail_url,
-                        'kind' : kind
-                    }
+                        self.playlist.append(temp)
+                        #_LOGGER.error(temp)
 
-                    temp = {
-                        'video_id': id,
-                        'title':    title,
-                        'url':      url,
-                        'thumbnail_url': thumbnail_url,
-                        'kind' : kind
-                    }
-
-                    self.playlist.append(temp)
-
-                    if not init:
-                        self._name  = title
-                        self._state = url
-                        self._image = thumbnail_url
-                        init = True
-
-                _LOGGER.error(dict)
-
-                self.data = dict
+                #self.data = dict
                 self._init = True
-            else:
-                pop = self.playlist.pop(0)
 
-                self.playlist.append(pop)
+            if self._init:
+                ri = randint(0, self._video_number-1)
 
-                self._name  = self.playlist[0]['title']
-                self._state = self.playlist[0]['url']
-                self._image = self.playlist[0]['thumbnail_url']
+                self._playlist_id = ri
+
+                self._name           = self.playlist[ri]['title']
+                self._image          = self.playlist[ri]['thumbnail_url']
+
+                video_id             = self.playlist[ri]['video_id']
+                _LOGGER.error('current video id: %s', video_id)
+
+                self._video_url      = VIDEO_URL.format(video_id)
+                self._music_url      = MUSIC_URL.format(video_id)
+                
+                # video duration
+                url2 = BASE_URL3.format(video_id, self._apikey) 
+                #_LOGGER.error('video url: %s', url2)
+
+                res2 = await self._session.get(url2)
+                res_json2 = await res2.json()
+                res_items2 = res_json2['items']
+                #_LOGGER.error('res_items2: %s', res_items2)
+
+                #for res_item in res_items:
+                video_duration = res_items2[0]['contentDetails']['duration']
+
+                video_miniutes = 0
+                if video_duration=='P0D':  # P0D means live
+                    video_miniutes = -1
+                else:
+                    video_miniutes = int(isodate.parse_duration(video_duration).total_seconds()//60)
+                self._video_miniutes = video_miniutes
+                #_LOGGER.error('minutes: %s', video_miniutes)
 
         except Exception as error:  # pylint: disable=broad-except
             _LOGGER.error('%s - Could not update - %s', self._name, error)
@@ -138,6 +180,7 @@ class YoutubeSensor(Entity):
     def name(self):
         """Name."""
         return self._name
+        #return self._playlist_name
 
     @property
     def entity_picture(self):
@@ -146,12 +189,12 @@ class YoutubeSensor(Entity):
 
     @property
     def entity_id(self):
-        return 'sensor.youtube_{}'.format(self._playlist_id.lower().replace("-", "_"))
+        return 'sensor.utube_{}'.format(self._playlist_name)
 
     @property
     def state(self):
         """State."""
-        return self._state
+        return self._video_url
 
     @property
     def icon(self):
@@ -164,11 +207,15 @@ class YoutubeSensor(Entity):
         att = {}
 
         att['playlist_id'] = self._playlist_id
+        att['playlist_name'] = self._playlist_name
 
-        if self._playlist_name is not None:
-            att['playlist_name'] = self._playlist_name
+        att['video_number'] = self._video_number
+        att['video_title'] = self._name
+        att['video_url'] = self._video_url
+        att['music_url'] = self._music_url
+        att['video_miniutes'] = self._video_miniutes
 
-        for key, val  in self.data.items():
-            att[val['title']] = val['url']
+        #for key, val  in self.data.items():
+        #    att[val['title']] = val['url']
 
         return att
