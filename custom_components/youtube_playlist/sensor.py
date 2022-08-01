@@ -189,7 +189,7 @@ class YoutubeSensor(Entity):
 
     @property
     def entity_id(self):
-        return 'sensor.utube_{}'.format(self._playlist_name)
+        return 'sensor.youtube_{}'.format(self._playlist_name)
 
     @property
     def state(self):
