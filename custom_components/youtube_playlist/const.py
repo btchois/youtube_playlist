@@ -1,6 +1,6 @@
 DOMAIN = 'youtube_playlist'
 
-VERSION = '1.1.1'
+VERSION = '1.1.2'
 
 CONF_APIKEY        = 'key'
 CONF_PLAYLISTS     = 'playlists'
