@@ -5,6 +5,5 @@
   "dependencies": [],
   "codeowners": ["@btchois"],
   "requirements": [],
-  "iot_class": "local_polling",
   "version": "1.1.2"
 }
