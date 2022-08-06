@@ -63,7 +63,6 @@ class YoutubeSensor(Entity):
         self._init          = False
         self._init_after_cnt= -1
         self._init_after_mul= 1
-        #sefl._r0            = -1 
         
         # btchois
         self._video_num   = 0
@@ -161,7 +160,7 @@ class YoutubeSensor(Entity):
                     self._init_after_mul += 1
                     random.shuffle(self.shuffle_list)
                     
-                ri = self.shuffle_list[sefl._init_after_cnt]
+                ri = self.shuffle_list[self._init_after_cnt]
 
                 self._playlist_id = ri
 
