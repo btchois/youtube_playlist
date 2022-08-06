@@ -19,6 +19,7 @@ Youtube Data API를 사용하기 때문에 apikey를 발급받아야 합니다.<
 | v1.1.1  | 2022.07.24  | Fixed bug  |
 | v1.1.2  | 2022.08.01  | forked from miumida  |
 | v1.1.3  | 2022.08.01  | renamed sensor.utube_xxx to sensor.youtube_xxxx  |
+| v1.1.4  | 2022.08.06  | support shuffle mode
 
 
 <br>
@@ -84,7 +85,7 @@ sensor:
 |옵션|내용|
 |--|--|
 |playlist_id| (필수) PL_WRsf0iuN4jqDuqeYeivO9oysAF2LI9L  |
-|playlist_name| (옵션) 의미없음!  |
+|playlist_name| (필수) sensor name: sensor.playlist_name  |
 
 <br>
 
