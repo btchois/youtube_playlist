@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import Entity
 import requests
 import json
 import isodate
+import random
 
 # to do list
 # music/video 구분
@@ -60,6 +61,10 @@ class YoutubeSensor(Entity):
         self._music_url     = None
 
         self._init          = False
+        self._init_after_cnt= -1
+        self._init_after_mul= 1
+        #sefl._r0            = -1 
+        
         # btchois
         self._video_num   = 0
         self._play_id     = 0
@@ -70,6 +75,8 @@ class YoutubeSensor(Entity):
 
         #self.data = {}
         self.playlist = []
+        
+        self.shuffle_list = []
 
     async def async_update(self):
         """Update sensor."""
@@ -138,9 +145,23 @@ class YoutubeSensor(Entity):
 
                 #self.data = dict
                 self._init = True
+                self.shuffle_list = [n for n in range(0,self._video_number)]
+                random.shuffle(self.shuffle_list)
+
 
             if self._init:
-                ri = randint(0, self._video_number-1)
+                # re-shuffle
+                if self._init_after_cnt<(self._video_number-1):
+                    self._init_after_cnt += 1
+                else:
+                    self._init_after_cnt = 0
+                    self._init_after_mul = 1
+                   
+                if self._init_after_cnt<self._video_number and (self._video_number//3)*self._init_after_mul < self._init_after_cnt == 0:
+                    self._init_after_mul += 1
+                    random.shuffle(self.shuffle_list)
+                    
+                ri = self.shuffle_list[sefl._init_after_cnt]
 
                 self._playlist_id = ri
 
