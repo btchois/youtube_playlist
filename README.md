@@ -49,7 +49,9 @@ sensor:
     scan_interval: 9999
     playlists:
       - playlist_id: [ you want playlist id 1st ]
+        plalist_name: [sensor name of 1st ]
       - playlist_id: [ you want playlist id 2nd ]
+        plalist_name: [sensor name of 2nd ]
 ```
 
 <br>
