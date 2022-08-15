@@ -150,15 +150,17 @@ class YoutubeSensor(Entity):
 
             if self._init:
                 # re-shuffle
+                    
                 if self._init_after_cnt<(self._video_number-1):
-                    self._init_after_cnt += 1
-                else:
-                    self._init_after_cnt = 0
-                    self._init_after_mul = 1
-                   
-                if self._init_after_cnt<self._video_number and (self._video_number//3)*self._init_after_mul < self._init_after_cnt == 0:
-                    self._init_after_mul += 1
-                    random.shuffle(self.shuffle_list)
+                     self._init_after_cnt += 1
+                 else:
+                     self._init_after_cnt = 0
+                     random.shuffle(self.shuffle_list)
+#                     self._init_after_mul = 1
+#                   
+#                 if self._init_after_cnt<self._video_number and (self._video_number//3)*self._init_after_mul < self._init_after_cnt == 0:
+#                     self._init_after_mul += 1
+#                     random.shuffle(self.shuffle_list)
                     
                 ri = self.shuffle_list[self._init_after_cnt]
 
