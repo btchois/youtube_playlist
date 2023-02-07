@@ -59,18 +59,19 @@ class YoutubeSensor(Entity):
         self._playlist_name = playlist_name
         self._video_url     = None
         self._music_url     = None
+        self._video_idx     = 0
 
         self._init          = False
-        self._init_after_cnt= -1
+        self._init_after_cnt= 0 # -1
         self._init_after_mul= 1
         
         # btchois
-        self._video_num   = 0
+        self._video_number= 0
         self._play_id     = 0
         self._video_duration = None
         self._video_miniutes = 0
 
-        _LOGGER.error(self._name)
+        #_LOGGER.error(self._name)
 
         #self.data = {}
         self.playlist = []
@@ -79,15 +80,14 @@ class YoutubeSensor(Entity):
 
     async def async_update(self):
         """Update sensor."""
-        _LOGGER.debug('%s - Running update', self._name)
+        #_LOGGER.debug('%s - Running update', self._name)
 
-        # btchois
-        res_json = { "nextPageToken": "Initial" }
-        token = ''
-        first = True
-
-        #dict = {}
+        dict = {}
         try:
+            # btchois
+            token = ''
+            first = True
+            res_json = { "nextPageToken": "Initial" }
 
             if not self._init:
                 while ('nextPageToken' in res_json):
@@ -100,13 +100,12 @@ class YoutubeSensor(Entity):
                     res = await self._session.get(url)
                     res_json = await res.json()
                     res_items = res_json['items']
-                    #_LOGGER.error(res_items)
+                    _LOGGER.error('%s',  self._playlist_name)
+                    #_LOGGER.error('res_items: %s', res_items[0])
 
                     self._video_number = res_json['pageInfo']['totalResults']
                     if 'nextPageToken' in res_json:
                         token = res_json['nextPageToken']
-
-                    init = False
 
                     for res_item in res_items:
 
@@ -116,25 +115,22 @@ class YoutubeSensor(Entity):
 
                         id    = res_item[ATTR_SNIPPET]['resourceId']['videoId']
                         kind  = res_item[ATTR_SNIPPET]['resourceId']['kind']
-                        #url   = VIDEO_URL.format(id)
                         thumbnail_url    = res_item[ATTR_SNIPPET]['thumbnails']['default'][ATTR_URL]
                         thumbnail_medium = res_item[ATTR_SNIPPET]['thumbnails']['medium'][ATTR_URL]
                         thumbnail_high   = res_item[ATTR_SNIPPET]['thumbnails']['high'][ATTR_URL]
 
                         thumbnail_url = thumbnail_medium
 
-                        #dict[id] = {
-                        #    'video_id': id,
-                        #    'title':    title,
-                        #    'url':      url,
-                        #    'thumbnail_url': thumbnail_url,
-                        #    'kind' : kind,
-                        #}
+                        # dict[id] = {
+                        #     'video_id': id,
+                        #     'title':    title,
+                        #     'thumbnail_url': thumbnail_url,
+                        #     'kind' : kind,
+                        # }
 
                         temp = {
                             'video_id': id,
                             'title':    title,
-                        #    'url':      url,
                             'thumbnail_url': thumbnail_url,
                             'kind' : kind,
                         }
@@ -142,7 +138,7 @@ class YoutubeSensor(Entity):
                         self.playlist.append(temp)
                         #_LOGGER.error(temp)
 
-                #self.data = dict
+                # self.data = dict
                 self._init = True
                 self.shuffle_list = [n for n in range(0,self._video_number)]
                 random.shuffle(self.shuffle_list)
@@ -163,26 +159,22 @@ class YoutubeSensor(Entity):
 #                     random.shuffle(self.shuffle_list)
                     
                 ri = self.shuffle_list[self._init_after_cnt]
-
-                self._playlist_id = ri
+                self._video_idx = ri
 
                 self._name           = self.playlist[ri]['title']
                 self._image          = self.playlist[ri]['thumbnail_url']
 
                 video_id             = self.playlist[ri]['video_id']
-                _LOGGER.error('current video id: %s', video_id)
 
                 self._video_url      = VIDEO_URL.format(video_id)
                 self._music_url      = MUSIC_URL.format(video_id)
                 
                 # video duration
                 url2 = BASE_URL3.format(video_id, self._apikey) 
-                #_LOGGER.error('video url: %s', url2)
 
                 res2 = await self._session.get(url2)
                 res_json2 = await res2.json()
                 res_items2 = res_json2['items']
-                #_LOGGER.error('res_items2: %s', res_items2)
 
                 #for res_item in res_items:
                 video_duration = res_items2[0]['contentDetails']['duration']
@@ -193,7 +185,6 @@ class YoutubeSensor(Entity):
                 else:
                     video_miniutes = int(isodate.parse_duration(video_duration).total_seconds()//60)
                 self._video_miniutes = video_miniutes
-                #_LOGGER.error('minutes: %s', video_miniutes)
 
         except Exception as error:  # pylint: disable=broad-except
             _LOGGER.error('%s - Could not update - %s', self._name, error)
@@ -232,12 +223,16 @@ class YoutubeSensor(Entity):
         att['playlist_name'] = self._playlist_name
 
         att['video_number'] = self._video_number
+        att['video_index'] = self._video_idx
         att['video_title'] = self._name
         att['video_url'] = self._video_url
         att['music_url'] = self._music_url
         att['video_miniutes'] = self._video_miniutes
 
-        #for key, val  in self.data.items():
-        #    att[val['title']] = val['url']
+        # False means unavaiable video in playlist (check and remove it!!!)
+        att['video_init'] = self._init 
+
+        # for key, val  in self.data.items():
+        #     att[val['title']] = val['url']
 
         return att
